@@ -29,7 +29,7 @@ export async function PUT(
 
     if (!validation.success) {
       return Response.json(
-        { error: validation.error.errors[0].message },
+        { error: z.treeifyError(validation.error) },
         { status: 400 }
       )
     }
