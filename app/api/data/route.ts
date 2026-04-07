@@ -1,0 +1,79 @@
+import { prisma } from '@/lib/prisma'
+
+export async function POST(request: Request) {
+  try {
+    // Validasi API key dari ESP32
+    const apiKey = request.headers.get('x-api-key')
+    if (apiKey !== process.env.ESP32_API_KEY) {
+      return Response.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+
+    const body = await request.json()
+    const {
+      device_id,
+      reading_id,
+      temperature,
+      heart_rate,
+      spo2,
+      latitude,
+      longitude,
+      rssi
+    } = body
+
+    // Validasi field wajib
+    if (!device_id) {
+      return Response.json(
+        { error: 'device_id wajib diisi' },
+        { status: 400 }
+      )
+    }
+
+    // Cek device terdaftar di DB
+    const device = await prisma.devices.findUnique({
+      where: { deviceId: device_id }
+    })
+
+    if (!device) {
+      return Response.json(
+        { error: 'Device tidak terdaftar' },
+        { status: 404 }
+      )
+    }
+
+    if (!device.isActive) {
+      return Response.json(
+        { error: 'Device tidak aktif' },
+        { status: 403 }
+      )
+    }
+
+    // Insert data sensor
+    const data = await prisma.sensor_readings.create({
+      data: {
+        deviceId:    device_id,
+        readingId:   reading_id ? parseInt(reading_id) : null,
+        temperature: temperature ? parseFloat(temperature) : null,
+        heartRate:   heart_rate ? parseFloat(heart_rate) : null,
+        spo2:        spo2 ? parseFloat(spo2) : null,
+        latitude:    latitude ? parseFloat(latitude) : null,
+        longitude:   longitude ? parseFloat(longitude) : null,
+        rssi:        rssi ? parseInt(rssi) : null,
+      }
+    })
+
+    return Response.json(
+      { success: true, data },
+      { status: 201 }
+    )
+
+  } catch (error) {
+    console.error('Error:', error)
+    return Response.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    )
+  }
+}

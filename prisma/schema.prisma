@@ -1,0 +1,55 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model farmers {
+  id        Int      @id @default(autoincrement())
+  name      String
+  email     String   @unique
+  password  String
+  createdAt DateTime @default(now())
+  cows      cows[]
+}
+
+model cows {
+  id        Int      @id @default(autoincrement())
+  farmerId  Int
+  name      String
+  createdAt DateTime @default(now())
+  farmer    farmers   @relation(fields: [farmerId], references: [id], onDelete: Cascade)
+  devices   devices[]
+}
+
+model devices {
+  id             Int              @id @default(autoincrement())
+  deviceId       String           @unique
+  cowId          Int?
+  isActive       Boolean          @default(true)
+  createdAt      DateTime         @default(now())
+  cow            cows?             @relation(fields: [cowId], references: [id], onDelete: SetNull)
+  sensorReadings sensor_readings[]
+}
+
+model sensor_readings {
+  id          Int      @id @default(autoincrement())
+  deviceId    String
+  readingId   Int?
+  temperature Decimal? @db.Decimal(5, 2)   // suhu tubuh - MLX90614
+  heartRate   Decimal? @db.Decimal(5, 2)   // BPM - MAX30102
+  spo2        Decimal? @db.Decimal(5, 2)   // SpO2 - MAX30102
+  latitude    Decimal? @db.Decimal(10, 7)  // GPS
+  longitude   Decimal? @db.Decimal(10, 7)  // GPS
+  rssi        Int?
+  createdAt   DateTime @default(now())
+  device      devices   @relation(fields: [deviceId], references: [deviceId], onDelete: Cascade)
+}
