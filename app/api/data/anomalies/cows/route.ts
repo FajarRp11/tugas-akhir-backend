@@ -3,9 +3,9 @@ import { verifyToken } from '@/lib/auth'
 
 // Range normal sapi
 const NORMAL_RANGE = {
-  temperature: { min: 38.0, max: 39.5 },
-  heartRate: { min: 60, max: 80 },
-  spo2: { min: 95, max: 100 },
+  temperature: { min: '38.0', max: '39.5' },
+  heartRate: { min: '60', max: '80' },
+  spo2: { min: '95', max: '100' },
 }
 
 export async function GET(request: Request) {
