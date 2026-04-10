@@ -8,10 +8,6 @@ export async function GET(request: Request) {
       return Response.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { searchParams } = new URL(request.url)
-    const limit = searchParams.get('limit')
-    const takeCount = limit ? parseInt(limit) : 50
-
     const data = await prisma.sensor_readings.findMany({
       where: {
         device: {
@@ -34,7 +30,7 @@ export async function GET(request: Request) {
       orderBy: {
         createdAt: 'desc'
       },
-      take: takeCount
+      take: 50
     })
 
     return Response.json({ success: true, data })
