@@ -23,11 +23,12 @@ export async function GET(request: Request) {
           }
         },
         OR: [
-          { temperature: { lt: NORMAL_RANGE.temperature.min } },
-          { temperature: { gt: NORMAL_RANGE.temperature.max } },
-          { heartRate: { lt: NORMAL_RANGE.heartRate.min } },
-          { heartRate: { gt: NORMAL_RANGE.heartRate.max } },
-          { spo2: { lt: NORMAL_RANGE.spo2.min } },
+          { temperature: { lt: '38.0' } },
+          { temperature: { gt: '39.5' } },
+          { heartRate: { lt: '60' } },
+          { heartRate: { gt: '80' } },
+          { spo2: { lt: '95' } },
+          { spo2: { gt: '100' } }
         ]
       },
       include: {
