@@ -1,19 +1,27 @@
 import { prisma } from '@/lib/prisma'
 import { generateToken } from '@/lib/auth'
 import bcrypt from 'bcryptjs'
+import { z } from 'zod'
 
-export async function POST(request: Request) {
+const LoginSchema = z.object({
+  email: z.string().email('Format email tidak valid'),
+  password: z.string().min(6, 'Password minimal 6 karakter')
+})
+
+export const POST = async (request: Request) => {
   try {
     const body = await request.json()
-    const { email, password } = body
 
-    // Validasi field wajib
-    if (!email || !password) {
+    // Validasi pakai Zod
+    const validation = LoginSchema.safeParse(body)
+    if (!validation.success) {
       return Response.json(
-        { error: 'Email dan password wajib diisi' },
+        { error: z.treeifyError(validation.error) },
         { status: 400 }
       )
     }
+
+    const { email, password } = validation.data
 
     // Cek email terdaftar
     const farmer = await prisma.farmers.findUnique({
@@ -43,6 +51,8 @@ export async function POST(request: Request) {
       name: farmer.name
     })
 
+
+
     return Response.json({
       success: true,
       data: {
@@ -61,3 +71,29 @@ export async function POST(request: Request) {
     )
   }
 }
+
+(POST as any).apiDoc = {
+  summary: "Login user",
+  tags: ["Auth"],
+  requestBody: {
+    required: true,
+    content: {
+      "application/json": {
+        schema: {
+          type: "object",
+          required: ["email", "password"],
+          properties: {
+            email: {
+              type: "string",
+              example: "user@email.com",
+            },
+            password: {
+              type: "string",
+              example: "password123",
+            },
+          },
+        },
+      },
+    },
+  },
+};
