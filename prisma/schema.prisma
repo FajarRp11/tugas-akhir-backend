@@ -53,3 +53,11 @@ model sensor_readings {
   createdAt   DateTime @default(now())
   device      devices   @relation(fields: [deviceId], references: [deviceId], onDelete: Cascade)
 }
+
+model password_resets {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  token     String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
