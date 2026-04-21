@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma'
 import { verifyToken } from '@/lib/auth'
+import pusher from '@/lib/pusher'
 
 export async function GET(request: Request) {
   try {
@@ -73,7 +74,10 @@ export async function POST(request: Request) {
 
     // Cek device terdaftar di DB
     const device = await prisma.devices.findUnique({
-      where: { deviceId: device_id }
+      where: { deviceId: device_id },
+      include: {
+        cow: true
+      }
     })
 
     if (!device) {
@@ -103,6 +107,15 @@ export async function POST(request: Request) {
         rssi:        rssi ? parseInt(rssi) : null,
       }
     })
+
+    // Trigger Pusher ke channel peternak yang sesuai
+    if (device.cow?.farmerId) {
+      await pusher.trigger(
+        `farmer-${device.cow.farmerId}`,
+        'new-sensor-reading',
+        data
+      )
+    }
 
     return Response.json(
       { success: true, data },
