@@ -108,12 +108,23 @@ export async function POST(request: Request) {
       }
     })
 
+    // Cek apakah data anomali
+    const isAnomaly =
+      (data.temperature && (Number(data.temperature) > 39.5 || Number(data.temperature) < 38.0)) ||
+      (data.heartRate && (Number(data.heartRate) > 80 || Number(data.heartRate) < 60)) ||
+      (data.spo2 && Number(data.spo2) < 95)
+
+
     // Trigger Pusher ke channel peternak yang sesuai
     if (device.cow?.farmerId) {
       await pusher.trigger(
         `farmer-${device.cow.farmerId}`,
         'new-sensor-reading',
-        data
+        {
+          ...data,
+          isAnomaly,
+          cowName: device.cow?.name || 'Sapi',
+        }
       )
     }
 
