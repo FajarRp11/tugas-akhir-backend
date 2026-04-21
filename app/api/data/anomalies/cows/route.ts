@@ -3,9 +3,22 @@ import { verifyToken } from '@/lib/auth'
 
 // Range normal sapi
 const NORMAL_RANGE = {
-  temperature: { min: '38.0', max: '39.5' },
-  heartRate: { min: '60', max: '80' },
-  spo2: { min: '95', max: '100' },
+  temperature: { min: 38.0, max: 39.5 },
+  heartRate: { min: 60, max: 80 },
+  spo2: { min: 95, max: 100 },
+}
+
+// Cek apakah sebuah reading termasuk anomali
+function isAnomaly(reading: any): boolean {
+  const temp = reading.temperature ? parseFloat(reading.temperature) : null
+  const hr = reading.heartRate ? parseFloat(reading.heartRate) : null
+  const spo2 = reading.spo2 ? parseFloat(reading.spo2) : null
+
+  return (
+    (temp !== null && (temp < NORMAL_RANGE.temperature.min || temp > NORMAL_RANGE.temperature.max)) ||
+    (hr !== null && (hr < NORMAL_RANGE.heartRate.min || hr > NORMAL_RANGE.heartRate.max)) ||
+    (spo2 !== null && (spo2 < NORMAL_RANGE.spo2.min || spo2 > NORMAL_RANGE.spo2.max))
+  )
 }
 
 export async function GET(request: Request) {
@@ -15,46 +28,49 @@ export async function GET(request: Request) {
       return Response.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const anomalies = await prisma.sensor_readings.findMany({
+    // Ambil semua device milik sapi farmer ini, beserta reading terbaru
+    const devices = await prisma.devices.findMany({
       where: {
-        device: {
-          cow: {
-            farmerId: user.id
-          }
-        },
-        OR: [
-          { temperature: { lt: '38.0' } },
-          { temperature: { gt: '39.5' } },
-          { heartRate: { lt: '60' } },
-          { heartRate: { gt: '80' } },
-          { spo2: { lt: '95' } },
-          { spo2: { gt: '100' } }
-        ]
-      },
-      include: {
-        device: {
-          select: {
-            deviceId: true,
-            cowId: true,
-            cow: {
-              select: { name: true }
-            }
-          }
+        cow: {
+          farmerId: user.id
         }
       },
-      orderBy: { createdAt: 'desc' },
+      select: {
+        deviceId: true,
+        cowId: true,
+        cow: {
+          select: { name: true }
+        },
+        sensorReadings: {
+          orderBy: { createdAt: 'desc' },
+          take: 1
+        }
+      }
     })
 
-    // Deduplicate: hanya ambil data terbaru per cowId
+    // Filter: hanya ambil device yang reading terbarunya adalah anomali
+    // Deduplicate per cowId (jika ada >1 device per sapi)
     const seen = new Set<number | null>()
-    const uniqueAnomalies = anomalies.filter((item) => {
-      const cowId = item.device.cowId
-      if (seen.has(cowId)) return false
-      seen.add(cowId)
-      return true
-    })
+    const anomalies = devices
+      .filter((device) => {
+        const reading = device.sensorReadings[0]
+        if (!reading) return false
+        if (!isAnomaly(reading)) return false
+        // Deduplicate by cowId
+        if (seen.has(device.cowId)) return false
+        seen.add(device.cowId)
+        return true
+      })
+      .map((device) => ({
+        ...device.sensorReadings[0],
+        device: {
+          deviceId: device.deviceId,
+          cowId: device.cowId,
+          cow: device.cow
+        }
+      }))
 
-    return Response.json({ success: true, data: uniqueAnomalies })
+    return Response.json({ success: true, data: anomalies })
   } catch (error) {
     console.error('Error:', error)
     return Response.json({ error: 'Internal server error' }, { status: 500 })
