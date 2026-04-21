@@ -35,6 +35,7 @@ export async function GET(request: Request) {
         device: {
           select: {
             deviceId: true,
+            cowId: true,
             cow: {
               select: { name: true }
             }
@@ -42,10 +43,18 @@ export async function GET(request: Request) {
         }
       },
       orderBy: { createdAt: 'desc' },
-      take: 5
     })
 
-    return Response.json({ success: true, data: anomalies })
+    // Deduplicate: hanya ambil data terbaru per cowId
+    const seen = new Set<number | null>()
+    const uniqueAnomalies = anomalies.filter((item) => {
+      const cowId = item.device.cowId
+      if (seen.has(cowId)) return false
+      seen.add(cowId)
+      return true
+    })
+
+    return Response.json({ success: true, data: uniqueAnomalies })
   } catch (error) {
     console.error('Error:', error)
     return Response.json({ error: 'Internal server error' }, { status: 500 })
