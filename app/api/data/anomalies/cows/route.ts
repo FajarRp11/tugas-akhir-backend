@@ -69,6 +69,8 @@ export async function GET(request: Request) {
           cow: device.cow
         }
       }))
+      // Urutkan berdasarkan createdAt sensor reading (terbaru ke terlama)
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
 
     return Response.json({ success: true, data: anomalies })
   } catch (error) {
