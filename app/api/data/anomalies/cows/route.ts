@@ -42,7 +42,7 @@ export async function GET(request: Request) {
           select: { name: true }
         },
         sensorReadings: {
-          orderBy: { createdAt: 'asc' },
+          orderBy: { createdAt: 'desc' },
           take: 1
         }
       }
