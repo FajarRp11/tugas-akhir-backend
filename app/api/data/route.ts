@@ -2,6 +2,28 @@ import { prisma } from '@/lib/prisma'
 import { verifyToken } from '@/lib/auth'
 import pusher from '@/lib/pusher'
 
+async function sendPushNotification(
+  pushToken: string,
+  cowName: string,
+  message: string
+) {
+  await fetch('https://exp.host/--/api/v2/push/send', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      to: pushToken,
+      title: `⚠️ Peringatan: ${cowName}`,
+      body: message,
+      sound: 'default',
+      priority: 'high',
+      channelId: 'cow-alerts',
+      data: { cowName },
+    }),
+  })
+}
+
 export async function GET(request: Request) {
   try {
     const user = verifyToken(request) as any
@@ -108,24 +130,59 @@ export async function POST(request: Request) {
       }
     })
 
-    // Cek apakah data anomali
-    const isAnomaly =
-      (data.temperature && (Number(data.temperature) > 39.5 || Number(data.temperature) < 38.0)) ||
-      (data.heartRate && (Number(data.heartRate) > 80 || Number(data.heartRate) < 60)) ||
-      (data.spo2 && Number(data.spo2) < 95)
+    // Cek anomali
+    const anomalies: string[] = []
+    if (data.temperature) {
+      if (Number(data.temperature) > 39.5)
+        anomalies.push(`Suhu tubuh tinggi: ${Number(data.temperature).toFixed(1)}°C`)
+      if (Number(data.temperature) < 38.0)
+        anomalies.push(`Suhu tubuh rendah: ${Number(data.temperature).toFixed(1)}°C`)
+    }
+    if (data.heartRate) {
+      if (Number(data.heartRate) > 80)
+        anomalies.push(`Detak jantung tinggi: ${Number(data.heartRate)} BPM`)
+      if (Number(data.heartRate) < 60)
+        anomalies.push(`Detak jantung rendah: ${Number(data.heartRate)} BPM`)
+    }
+    if (data.spo2 && Number(data.spo2) < 95)
+      anomalies.push(`SpO2 rendah: ${Number(data.spo2)}%`)
 
+    const isAnomaly = anomalies.length > 0
 
-    // Trigger Pusher ke channel peternak yang sesuai
     if (device.cow?.farmerId) {
+      // Trigger Pusher
       await pusher.trigger(
         `farmer-${device.cow.farmerId}`,
-        'new-sensor-reading',
+        'new-sensor-data',
         {
-          ...data,
+          deviceId: device_id,
+          cowName: device.cow.name,
+          temperature: data.temperature,
+          heartRate: data.heartRate,
+          spo2: data.spo2,
+          latitude: data.latitude,
+          longitude: data.longitude,
+          rssi: data.rssi,
           isAnomaly,
-          cowName: device.cow?.name || 'Sapi',
+          createdAt: data.createdAt,
         }
       )
+
+      // Kirim push notification kalau ada anomali
+      if (isAnomaly) {
+        const farmer = await prisma.farmers.findUnique({
+          where: { id: device.cow.farmerId },
+          select: { pushToken: true }
+        })
+
+        if (farmer?.pushToken) {
+          await sendPushNotification(
+            farmer.pushToken,
+            device.cow.name,
+            anomalies.join(', ')
+          )
+        }
+      }
     }
 
     return Response.json(
