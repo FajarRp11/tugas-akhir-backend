@@ -119,23 +119,23 @@ export async function POST(request: Request) {
     // Insert data sensor
     const data = await prisma.sensor_readings.create({
       data: {
-        deviceId:    device_id,
-        readingId:   reading_id ? parseInt(reading_id) : null,
+        deviceId: device_id,
+        readingId: reading_id ? parseInt(reading_id) : null,
         temperature: temperature ? parseFloat(temperature) : null,
-        heartRate:   heart_rate ? parseFloat(heart_rate) : null,
-        spo2:        spo2 ? parseFloat(spo2) : null,
-        latitude:    latitude ? parseFloat(latitude) : null,
-        longitude:   longitude ? parseFloat(longitude) : null,
-        rssi:        rssi ? parseInt(rssi) : null,
+        heartRate: heart_rate ? parseFloat(heart_rate) : null,
+        spo2: spo2 ? parseFloat(spo2) : null,
+        latitude: latitude ? parseFloat(latitude) : null,
+        longitude: longitude ? parseFloat(longitude) : null,
+        rssi: rssi ? parseInt(rssi) : null,
       }
     })
 
     // Cek anomali
     const anomalies: string[] = []
     if (data.temperature) {
-      if (Number(data.temperature) > 39.5)
+      if (Number(data.temperature) > 37.0)
         anomalies.push(`Suhu tubuh tinggi: ${Number(data.temperature).toFixed(1)}°C`)
-      if (Number(data.temperature) < 38.0)
+      if (Number(data.temperature) < 30.0)
         anomalies.push(`Suhu tubuh rendah: ${Number(data.temperature).toFixed(1)}°C`)
     }
     if (data.heartRate) {
