@@ -153,7 +153,7 @@ export async function POST(request: Request) {
       // Trigger Pusher
       await pusher.trigger(
         `farmer-${device.cow.farmerId}`,
-        'new-sensor-reading',
+        'new-sensor-data',
         {
           deviceId: device_id,
           cowName: device.cow.name,
