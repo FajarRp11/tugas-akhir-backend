@@ -28,6 +28,7 @@ export async function POST(request: Request) {
     console.log("TOKEN SAVED:", validation.data);
     return Response.json({ success: true })
   } catch (error) {
+    console.log("ERROR:", error);
     return Response.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
