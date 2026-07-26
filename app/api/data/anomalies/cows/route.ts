@@ -4,7 +4,7 @@ import { verifyToken } from '@/lib/auth'
 // Range normal sapi
 const NORMAL_RANGE = {
   temperature: { min: 30.0, max: 37.0 },
-  heartRate: { min: 60, max: 80 },
+  heartRate: { min: 48, max: 84 },
   spo2: { min: 95, max: 100 },
 }
 

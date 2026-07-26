@@ -7,21 +7,30 @@ async function sendPushNotification(
   cowName: string,
   message: string
 ) {
-  await fetch('https://exp.host/--/api/v2/push/send', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      to: pushToken,
-      title: `⚠️ Peringatan: ${cowName}`,
-      body: message,
-      sound: 'default',
-      priority: 'high',
-      channelId: 'cow-alerts',
-      data: { cowName },
-    }),
-  })
+  const res = await fetch(
+    "https://exp.host/--/api/v2/push/send",
+    {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Accept-Encoding": "gzip, deflate",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        to: pushToken,
+        title: `⚠️ ${cowName}`,
+        body: message,
+        sound: "default",
+        priority: "high",
+        channelId: "cow-alerts",
+      }),
+    }
+  );
+
+  const json = await res.json();
+
+  console.log("Expo Response:");
+  console.log(JSON.stringify(json, null, 2));
 }
 
 export async function GET(request: Request) {
@@ -170,17 +179,22 @@ export async function POST(request: Request) {
 
       // Kirim push notification kalau ada anomali
       if (isAnomaly) {
+        console.log("=== ANOMALI TERDETEKSI ===");
+        console.log(anomalies);
+
         const farmer = await prisma.farmers.findUnique({
           where: { id: device.cow.farmerId },
           select: { pushToken: true }
-        })
+        });
+
+        console.log("Push Token:", farmer?.pushToken);
 
         if (farmer?.pushToken) {
           await sendPushNotification(
             farmer.pushToken,
             device.cow.name,
-            anomalies.join(', ')
-          )
+            anomalies.join(", ")
+          );
         }
       }
     }
